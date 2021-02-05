@@ -5,6 +5,18 @@ Created on Sun Mar 26 11:28:03 2017
 @author: Fruit Flies
 """
 
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Mar 22 12:18:11 2017
+
+@author: Fruit Flies
+"""
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Mar 21 23:25:11 2017
+
+@author: Fruit Flies
+"""
 import sys
 
 from os import listdir
@@ -21,74 +33,42 @@ from load_hdf5_data import load_hdf5
 from bout_analysis_func import bout_analysis
 from expresso_gui_params import analysisParams
 #------------------------------------------------------------------------------
-#==============================================================================
-# USER INFO
-#==============================================================================
+#def plot_comp(ind, data_dir, annotations_dir):
+
+DATA_FILE_NUM = 21
+ind = DATA_FILE_NUM - 1 #ind + 1 is the name of the data file
+#------------------------------------------------------------------------------
+
 data_dir = 'F:\\Dropbox\\Sam\\eBrewerQ\\annotationsdatafiles_hdf5\\'
 save_dir = 'F:\\Dropbox\\Sam\\eBrewerQ\\sam_corrected\\'
 
-data_filename   = '21.hdf5'    # NAME OF HDF5 FILE
-filekeyname     = 'XP02'       # NAME OF BANK 
-groupkeyname    = 'channel_2'  # NAME OF CHANNEL
-
-#------------------------------------------------------------------------------
-# print some instructions
-#------------------------------------------------------------------------------
-print(50*'-')
-print("USER ANNOTATION FOR EXPRESSO DATA FILES")
-print(50*'-')
-print('- Double LEFT click to indicate bout START')
-print('- Double RIGHT click to indicate bout END')
-print('- Press Z key to delete previous bout START selection')
-print('- Press X key to delete previous bout END selection')
-print('- Press B key to save results and close plot window')
-print('- Press N key to exit without saving')
-print('')
-print('*Make sure to do all button presses/clicks when plot window is selected')
-print(50*'-')
-
-#------------------------------------------------------------------------------
-# handle file names appropriately
-#------------------------------------------------------------------------------
 if sys.version_info[0] < 3:
-    filekeyname = unicode(filekeyname) 
-    groupkeyname = unicode(groupkeyname) 
+    filekeyname = unicode('XP02') 
+    groupkeyname = unicode('channel_2') 
+else:
+    filekeyname = 'XP02' 
+    groupkeyname = 'channel_2' 
 
-data_filename_no_ext = splitext(data_filename)[0]
-save_filename =  str(data_filename_no_ext) + '_' +  filekeyname + '_' + \
-                 groupkeyname + '.csv'
-save_filepath = save_dir + save_filename
-
-#min_bout_duration = analysisParams['min_bout_duration']
+min_bout_duration = analysisParams['min_bout_duration']
 #min_bout_volume = analysisParams['min_bout_volume']
-#if sys.version_info[0] < 3:
-#    filekeyname = unicode('XP02') 
-#    groupkeyname = unicode('channel_2') 
-#else:
-#    filekeyname = 'XP02' 
-#    groupkeyname = 'channel_2' 
-#
-#DATA_FILE_NUM = 21
-#ind = DATA_FILE_NUM - 1 #ind + 1 is the name of the data file
-#
-#data_filenames = [f for f in listdir(data_dir) if 
-#                    isfile(join(data_dir, f)) and f.endswith('.hdf5')]
-#                    
-#data_filenames_int = np.empty(shape=(len(data_filenames),), dtype=int)
-#for kth in np.arange(len(data_filenames)):
-#    fname = data_filenames[kth]    
-#    fname_split = splitext(fname)
-#    fname_intstr = fname_split[0]
-#    data_filenames_int[kth] = int(fname_intstr)
-#
-#filename_sort_ind = np.argsort(data_filenames_int)
-#data_filenames_sorted = [data_filenames[sort_ind] for sort_ind in filename_sort_ind]
-#data_filenames_int = data_filenames_int[filename_sort_ind]
 
+data_filenames = [f for f in listdir(data_dir) if 
+                    isfile(join(data_dir, f)) and f.endswith('.hdf5')]
+                    
+data_filenames_int = np.empty(shape=(len(data_filenames),), dtype=int)
+for kth in np.arange(len(data_filenames)):
+    fname = data_filenames[kth]    
+    fname_split = splitext(fname)
+    fname_intstr = fname_split[0]
+    data_filenames_int[kth] = int(fname_intstr)
+
+filename_sort_ind = np.argsort(data_filenames_int)
+data_filenames_sorted = [data_filenames[sort_ind] for sort_ind in filename_sort_ind]
+data_filenames_int = data_filenames_int[filename_sort_ind]
 #------------------------------------------------------------------------------
+
 #load and analyze data 
-#------------------------------------------------------------------------------
-data_file = join(data_dir,data_filename)     
+data_file = join(data_dir,data_filenames_sorted[ind])     
 dset, t = load_hdf5(data_file,filekeyname,groupkeyname)
     
 dset_check = (dset != -1)
@@ -126,8 +106,7 @@ fig, (ax1, ax2) = plt.subplots(2, sharex=True, sharey=True, figsize=(17, 7))
 ax1.set_ylabel('Liquid [nL]')
 ax2.set_ylabel('Liquid [nL]')
 ax2.set_xlabel('Time [s]')
-ax1.set_title(data_filename + ', ' + filekeyname + ', ' + groupkeyname,
-              fontsize=20)
+ax1.set_title(data_filenames_sorted[ind],fontsize=20)
 ax2.set_title('Smoothed Data')
 
 ax1.plot(t,dset,'k-')
@@ -141,10 +120,7 @@ ax2.grid(True)
 
 multi = MultiCursor(fig.canvas, (ax1, ax2), color='grey', lw=.5, horizOn=True, 
                     vertOn=True)
-
-#------------------------------------------------------------------------------
-# define click events
-#------------------------------------------------------------------------------                
+                    
 def onclick(event):
     if event.dblclick:
         t_pick = event.xdata 
@@ -161,10 +137,10 @@ def onclick(event):
             ax2.axvline(x=t_closest,color='g')
             
             fig.canvas.draw()
-        # DOUBLE RIGHT CLICK TO SELECT BOUT END IND    
+        # DOUBLE rIGHT CLICK TO SELECT BOUT END IND    
         elif event.button == 3: 
             bout_end_list.append(t_closest)
-            bout_end_ind_list.append(t_closest_ind)
+            bout_end_ind_list.appbend(t_closest_ind)
             print('Selected bout end:')
             print(t_closest)
             ax1.axvline(x=t_closest,color='r')
@@ -198,25 +174,25 @@ def onpress(event):
             ax1.lines[-1].remove()  
             ax2.lines[-1].remove()
         fig.canvas.draw()
-    # B KEY TO SAVE RESULTS TO FILE AND EXIT    
+    # B KEY TO SAVE RESULTS TO FILE    
     elif event.key.lower() == 'b':
-        bout_start_array = np.sort(np.asarray(bout_start_list))
-        bout_end_array = np.sort(np.asarray(bout_end_list))
+        bout_start_array = np.asarray(bout_start_list)
+        bout_end_array = np.asarray(bout_end_list)
         
-        bout_start_ind_array = np.sort(np.asarray(bout_start_ind_list))
-        bout_end_ind_array = np.sort(np.asarray(bout_end_ind_list))
+        bout_start_ind_array = np.asarray(bout_start_ind_list)
+        bout_end_ind_array = np.asarray(bout_end_ind_list)
         
         bouts_t = np.transpose(np.vstack((bout_start_array,bout_end_array)))
         bouts_ind = np.transpose(np.vstack((bout_start_ind_array,bout_end_ind_array)))
         row_mat = np.hstack((bouts_ind, bouts_t))
-        
+        save_filename = save_dir + str(data_filenames_int[ind]) + '.csv'
         if sys.version_info[0] < 3:
-            save_file = open(save_filepath, 'wb')
+            save_file = open(save_filename, 'wb')
         else:
-            save_file = open(save_filepath, 'w', newline='')
+            save_file = open(save_filename, 'w', newline='')
         save_writer = csv.writer(save_file)
             
-        save_writer.writerow([data_filename + ', ' + filekeyname + ', ' + groupkeyname])
+        save_writer.writerow([data_filenames_sorted[ind]])
         save_writer.writerow(['Bout Number'] + ['Bout Start [idx]'] + \
             ['Bout End [idx]'] + ['Bout Start [s]'] + ['Bout End [s]'])
         cc = 1            
@@ -224,9 +200,7 @@ def onpress(event):
             new_row = np.insert(row,0,cc)
             save_writer.writerow(new_row)
             cc += 1
-        plt.close()
-    elif event.key.lower() == 'n': 
-        plt.close()
+        
         
 cid = fig.canvas.mpl_connect('button_press_event', onclick)  
 pid = fig.canvas.mpl_connect('key_press_event', onpress)                  

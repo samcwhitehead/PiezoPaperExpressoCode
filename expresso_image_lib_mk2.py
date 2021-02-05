@@ -14,15 +14,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 #-----------------------------------------------------------------------------
-# TO DO:
-#   -undistort
-#   -make sure bg subtract works when fly doesn't move much
-#   -real distance (pix to cm)
-#   -kalman filter and/or interpolation
-#   -enhance contrast for background subtracted images?
-#   -incorporate capillary tip into coordinates
-#   -move execution of function to separate script
-#   -incorporate time
 #-----------------------------------------------------------------------------
 # return a cropped, grayscale image specified by an ROI=r
 def get_cropped_im(framenum,cap,r):
@@ -98,10 +89,10 @@ def get_roi(img):
     #cv2.waitKey(0)
     #cv2.destroyAllWindows()
     
-    cv2.namedWindow('Select ROI (press enter when finished)', cv2.WINDOW_NORMAL)
+    cv2.namedWindow("ROI", cv2.WINDOW_NORMAL)
     fromCenter = False
     showCrosshair = False
-    r = cv2.selectROI('Select ROI (press enter when finished)',img,fromCenter,showCrosshair)
+    r = cv2.selectROI("ROI",img,fromCenter,showCrosshair)
     #cv2.waitKey(0)
     cv2.destroyAllWindows()
     return r
@@ -121,23 +112,25 @@ def get_xy(event,x,y,flags,param):
 # get capillary tip manually        
 def get_cap_tip(img):
     clone = img.copy()
-    cv2.namedWindow('get capillary tip (double click)')
-    cv2.setMouseCallback('get capillary tip (double click)',get_xy) 
-    cv2.imshow('get capillary tip (double click)',img)
+    cv2.namedWindow('get capillary tip')
+    cv2.setMouseCallback('get capillary tip',get_xy) 
+    cv2.imshow('get capillary tip',img)
     
     while True:
-        cv2.imshow('get capillary tip (double click)',img)
         try:
-            img = clone.copy()
             cv2.circle(img,(mouseX,mouseY),4,(255,0,0),-1)
         except NameError:
             pass
+        cv2.imshow('get capillary tip',img)
         
-        k = cv2.waitKey(20) & 0xFF
-        if k == 27:
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("r"):
+            img = clone
+        elif key == ord("c"):
             break
-        
-    img = clone.copy()
+       
+    
+    cv2.waitKey(0)
     cv2.destroyAllWindows()
     
     return (mouseX,mouseY)
@@ -226,7 +219,6 @@ def get_bg_alt(filename,r,fly_size_range=[20,100],min_dist=70,morphSize=3,
     x_cm = [] 
     y_cm = [] 
     framenum_list = []
-    mean_intensity = [] 
     #min_dist = 70
     delta_cm = 0 
     cc = 0
@@ -234,8 +226,6 @@ def get_bg_alt(filename,r,fly_size_range=[20,100],min_dist=70,morphSize=3,
         ret, frame = cap.read()
     
         frame = frame[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2]),:]
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        mean_intensity.append(np.mean(frame_gray))
         fgmask = fgbg.apply(frame)
         
         #fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
@@ -280,11 +270,6 @@ def get_bg_alt(filename,r,fly_size_range=[20,100],min_dist=70,morphSize=3,
     imt1 = get_cropped_im(framenum_list[t1],cap,r)
     imt2 = get_cropped_im(framenum_list[t2],cap,r)
     
-    #imt1 = cv2.normalize(imt1,imt1, 0, 255, cv2.NORM_MINMAX)
-    #imt2 = cv2.normalize(imt2,imt2, 0, 255, cv2.NORM_MINMAX)
-    imt1 = cv2.subtract(imt1,(np.mean(imt1)-130.0))
-    imt2 = cv2.subtract(imt2,(np.mean(imt2)-130.0))
-    
     bg = imt1
     if dx >= dy:
         if x_cm[t1] < xmid:
@@ -299,12 +284,12 @@ def get_bg_alt(filename,r,fly_size_range=[20,100],min_dist=70,morphSize=3,
     cap.release()
     cv2.namedWindow('Background', cv2.WINDOW_NORMAL)
     cv2.imshow('Background',bg)
-    return (bg, x_cm, y_cm, mean_intensity)
+    return (bg, x_cm, y_cm)
 
 #-----------------------------------------------------------------------------
 # get center of mass of fly from image ROI        
 def get_cm(filename,bg,r,fly_size_range=[20,100],morphSize=5,min_thresh=10, 
-           mean_intensity=130.0, debugFlag=True):
+           debugFlag=True):
                
     cap = cv2.VideoCapture(filename)
     N_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -319,19 +304,12 @@ def get_cm(filename,bg,r,fly_size_range=[20,100],morphSize=5,min_thresh=10,
     thresh_list = []
     x_ind = []
     y_ind = []
-    mean_intensity = [] 
-    std_intensity = [] 
     #.namedWindow('image')
     #cv2.namedWindow('thresh')
     for ith in range(1,N_frames-1):
         #print(ith)
         #im0 = get_cropped_im(ith-1,cap,r)
         im1 = get_cropped_im(ith,cap,r)
-        #im1 = cv2.normalize(im1,im1, 0, 255, cv2.NORM_MINMAX)
-        im1 = cv2.subtract(im1,(np.mean(im1)-130.0))
-        
-        mean_intensity.append(np.mean(im1))
-        std_intensity.append(np.std(im1))
         #im2 = get_cropped_im(ith+1,cap,r)
         #if isinstance(im, tuple):
         #    print(ith)
@@ -437,7 +415,7 @@ def get_cm(filename,bg,r,fly_size_range=[20,100],morphSize=5,min_thresh=10,
     y_cm = np.array(y_cm,dtype=np.float)
     
     cap.release()
-    return (x_cm,y_cm,x_ind,y_ind,thresh_list,mean_intensity,std_intensity)
+    return (x_cm,y_cm,x_ind,y_ind,thresh_list)
 
 #------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -447,10 +425,10 @@ if __name__ == "__main__":
     cmap = cm.get_cmap('Set1')
     cnorm = colors.Normalize(vmin=0.0, vmax=float(num_ROI)-1.0)
     filename = \
-        "F:\\Expresso GUI\\Imaging\\example_videos_expresso\\VExpressoTest2FixVod-Sam_testing_no_auto_exposure.avi"
+        "F:\\Expresso GUI\\Imaging\\VExpressoTest3Vod-09012017163301-0000.avi"
     
-    cm_savename = "F:\\Expresso GUI\\Imaging\\example_videos_expresso\\cm_data.hdf5"
-    roi_savename = "F:\\Expresso GUI\\Imaging\\example_videos_expresso\\roi_data.hdf5"
+    cm_savename = "F:\\Expresso GUI\\Imaging\\test output\\cm_data.hdf5"
+    roi_savename = "F:\\Expresso GUI\\Imaging\\test output\\cm_data.hdf5"
     
     cap = cv2.VideoCapture(filename)
     
@@ -467,7 +445,7 @@ if __name__ == "__main__":
     
     bg_list = []
     for jth in np.arange(num_ROI):
-        (bg, x_cm_guess, y_cm_guess,mean_intensity) = get_bg_alt(filename,r_list[jth])
+        (bg, x_cm_guess, y_cm_guess) = get_bg_alt(filename,r_list[jth])
         bg_list.append(bg)
     
     if False:
@@ -479,20 +457,19 @@ if __name__ == "__main__":
     x_cm_list = []
     y_cm_list = []
     for qth in np.arange(num_ROI):
-        x_cm,y_cm,_,_,_,mean_intensity2,std_intensity2 = get_cm(filename,
-            bg_list[qth], r_list[qth],mean_intensity=np.median(mean_intensity))
+        x_cm,y_cm,_,_,_ = get_cm(filename,bg_list[qth],r_list[qth])
         x_cm_list.append(x_cm)
         y_cm_list.append(y_cm)
     
     
     # save data
-#    with h5py.File(cm_savename,'w') as f:
-#        for dset_num in np.arange(num_ROI):
-#            f.create_dataset('xcm_%02d'%(dset_num), data=x_cm_list[dset_num])
-#            f.create_dataset('ycm_%02d'%(dset_num), data=y_cm_list[dset_num])
-#    with h5py.File(roi_savename, 'w') as g:
-#        for roi_num in np.arange(num_ROI):
-#            g.create_dataset('roi_%02d'%(ith),data=r)
+    with h5py.File(cm_savename,'w') as f:
+        for dset_num in np.arange(num_ROI):
+            f.create_dataset('xcm_%02d'%(dset_num), data=x_cm_list[dset_num])
+            f.create_dataset('ycm_%02d'%(dset_num), data=y_cm_list[dset_num])
+    with h5py.File(roi_savename, 'w') as g:
+        for roi_num in np.arange(num_ROI):
+            g.create_dataset('roi_%02d'%(ith),data=r)
                           
     x_cm_list_interp = []
     y_cm_list_interp = []
